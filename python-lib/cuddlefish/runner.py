@@ -475,12 +475,32 @@ def run_app(harness_root_dir, manifest_rdf, harness_options,
     sys.stdout.flush(); sys.stderr.flush()
 
     if app_type == "fennec-on-device":
-      # in case we run it on a mobile device, we only have to launch it
-      runner.start()
-      profile.cleanup()
-      time.sleep(1)
-      print >>sys.stderr, "Program terminated successfully."
-      return 0
+        # In case of mobile device, we need to get stdio from `adb logcat` cmd:
+
+        # First flush logs in order to avoid catching previous ones
+        subprocess.call([binary, "logcat", "-c"])
+
+        # Launch adb command
+        runner.start()
+
+        # We can immediatly remove temporary profile folder
+        # as it has been uploaded to the device
+        profile.cleanup()
+
+        # Then we simply display stdout of `adb logcat`
+        p = subprocess.Popen([binary, "logcat", "stderr:V stdout:V *:S"], stdout=subprocess.PIPE)
+        while True:
+            line = p.stdout.readline()
+            if line == '':
+                break
+            print line.rstrip()
+            # TODO: find a way to automatically stop reading logcat
+            # currently we have to CTRL+C cfx
+            if "Program terminated" in line:
+                break
+
+        print >>sys.stderr, "Program terminated successfully."
+        return 0
 
     print >>sys.stderr, "Using binary at '%s'." % runner.binary
 
