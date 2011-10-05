@@ -44,6 +44,17 @@ const Cr = Components.results;
 Components.utils.import("resource://gre/modules/Services.jsm");
 
 function startup(data, reason) {
+  // This code allow to make all stdIO work
+  try {
+    Components.utils.import("resource://gre/modules/ctypes.jsm");
+    let libdvm = ctypes.open("libdvm.so");
+    let dvmStdioConverterStartup = libdvm.declare("dvmStdioConverterStartup", ctypes.default_abi, ctypes.void_t);
+    dvmStdioConverterStartup();
+  } catch(e) {
+    Cu.reportError("CTYPES EX: "+e);
+  }
+
+  // This code allow to kill firefox from adb
   let Watcher = {
     window: null,
     onOpenWindow: function(window) {
