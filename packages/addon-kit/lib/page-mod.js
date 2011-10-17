@@ -119,7 +119,7 @@ const PageMod = Loader.compose(EventEmitter, {
       rules.add(include);
 
     this.on('error', this._onUncaughtError = this._onUncaughtError.bind(this));
-    pageModManager.add(this._public);
+    pageModManager.add(this);
 
     this._loadingWindows = [];
   },
@@ -127,7 +127,7 @@ const PageMod = Loader.compose(EventEmitter, {
   destroy: function destroy() {
     for each (let rule in this.include)
       this.include.remove(rule);
-    pageModManager.remove(this._public);
+    pageModManager.remove(this);
     this._loadingWindows = [];
   },
 
@@ -237,9 +237,213 @@ if (require("api-utils/xul-app").is("Firefox")) {
 
 }
 else if (require("api-utils/xul-app").is("Fennec")) {
-  const { Cc, Ci } = require("chrome");
+  let { Cc, Ci } = require("chrome");
 
-  const globalMM = Cc["@mozilla.org/globalmessagemanager;1"].getService(
+  let globalMM = Cc["@mozilla.org/globalmessagemanager;1"].getService(
+                   Ci.nsIChromeFrameMessageManager);
+
+  globalMM.loadFrameScript("data:text/javascript,new " + function FrameScope() {
+    sendAsyncMessage("new-tab");
+    
+    let Cc = Components.classes;
+    let Ci = Components.interfaces;
+    let Cu = Components.utils;
+
+    let WorkerURL = null;
+    function runPageMod(mod) {
+      let loader = Cc["@mozilla.org/moz/jssubscript-loader;1"].
+                   getService(Ci.mozIJSSubScriptLoader);
+      let scope = {};
+      let listeners = {};
+      scope.Pipe = {
+        on: function (name, listener) {
+          listeners[name] = listener;
+          Cu.reportError("register: "+name);
+        },
+        emit: function (name, v) {
+          if (name == "dump")
+            Cu.reportError("dump: "+v);
+          else
+            Cu.reportError("emit: "+name);
+          
+        }
+      };
+      Cu.reportError("WorkerURL: <"+WorkerURL+">"+typeof WorkerURL);
+      loader.loadSubScript(WorkerURL, scope);
+      listeners["create-worker"](mod);
+      Cu.reportError("WorkerURL OK");
+      
+    }
+    
+    let ios = Cc['@mozilla.org/network/io-service;1']
+          .getService(Ci.nsIIOService);
+    function MatchPattern(pattern) {
+      if (typeof pattern.test == "function") {
+
+        // For compatibility with -moz-document rules, we require the RegExp's
+        // global, ignoreCase, and multiline flags to be set to false.
+        if (pattern.global) {
+          throw new Error("A RegExp match pattern cannot be set to `global` " +
+                          "(i.e. //g).");
+        }
+        if (pattern.ignoreCase) {
+          throw new Error("A RegExp match pattern cannot be set to `ignoreCase` " +
+                          "(i.e. //i).");
+        }
+        if (pattern.multiline) {
+          throw new Error("A RegExp match pattern cannot be set to `multiline` " +
+                          "(i.e. //m).");
+        }
+
+        this.regexp = pattern;
+      }
+      else {
+        let firstWildcardPosition = pattern.indexOf("*");
+        let lastWildcardPosition = pattern.lastIndexOf("*");
+        if (firstWildcardPosition != lastWildcardPosition)
+          throw new Error("There can be at most one '*' character in a wildcard.");
+
+        if (firstWildcardPosition == 0) {
+          if (pattern.length == 1)
+            this.anyWebPage = true;
+          else if (pattern[1] != ".")
+            throw new Error("Expected a *.<domain name> string, got: " + pattern);
+          else
+            this.domain = pattern.substr(2);
+        }
+        else {
+          if (pattern.indexOf(":") == -1) {
+            throw new Error("When not using *.example.org wildcard, the string " +
+                            "supplied is expected to be either an exact URL to " +
+                            "match or a URL prefix. The provided string ('" +
+                            pattern + "') is unlikely to match any pages.");
+          }
+
+          if (firstWildcardPosition == -1)
+            this.exactURL = pattern;
+          else if (firstWildcardPosition == pattern.length - 1)
+            this.urlPrefix = pattern.substr(0, pattern.length - 1);
+          else {
+            throw new Error("The provided wildcard ('" + pattern + "') has a '*' " +
+                            "in an unexpected position. It is expected to be the " +
+                            "first or the last character in the wildcard.");
+          }
+        }
+      }
+    }
+try {
+    MatchPattern.prototype = {
+
+      test: function MatchPattern_test(urlStr) {
+        try {
+          var url = ios.newURI(urlStr, null, null);
+        }
+        catch (err) {
+          return false;
+        }
+
+        // Test the URL against a RegExp pattern.  For compatibility with
+        // -moz-document rules, we require the RegExp to match the entire URL,
+        // so we not only test for a match, we also make sure the matched string
+        // is the entire URL string.
+        //
+        // Assuming most URLs don't match most match patterns, we call `test` for
+        // speed when determining whether or not the URL matches, then call `exec`
+        // for the small subset that match to make sure the entire URL matches.
+        //
+        if (this.regexp && this.regexp.test(urlStr) &&
+            this.regexp.exec(urlStr)[0] == urlStr)
+          return true;
+
+        if (this.anyWebPage && /^(https?|ftp)$/.test(url.scheme))
+          return true;
+        if (this.exactURL && this.exactURL == urlStr)
+          return true;
+        if (this.domain && url.host &&
+            url.host.slice(-this.domain.length) == this.domain)
+          return true;
+        if (this.urlPrefix && 0 == urlStr.indexOf(this.urlPrefix))
+          return true;
+
+        return false;
+      }
+
+    };
+
+    let obsService = Cc["@mozilla.org/observer-service;1"].
+                     getService(Ci.nsIObserverService);
+    let pageMods = [];
+    var observer = {
+      observe: function(subject, topic, data) {
+        // XML document don't have `defaultView` set
+        // (for ex: XBL XML documents)
+        if (!subject.defaultView) return;
+        try {
+        for each(let pageMod in pageMods) {
+          let includes = pageMod.include;
+          for each (let rule in includes) {
+            let pattern = new MatchPattern(rule);
+            if (pattern.test(subject.location.href))
+              runPageMod(pageMod);
+              Cu.reportError("Match: "+subject.location.href);
+          }
+        }
+        } catch(e) {
+          Cu.reportError("fs ex: "+e);
+        }
+      }
+    };
+    obsService.addObserver(observer, "document-element-inserted", false);
+    
+    addMessageListener("worker-url", function (msg) {
+      WorkerURL = msg.json;
+    });
+    addMessageListener("add-page-mods", function (msg) {
+      pageMods = msg.json;
+    });
+    addMessageListener("remove-page-mod", function (pageMod) {
+      // TODO: very unlikely it works (work only if JSON values passed over sendAsyncMessage keep unicity)
+      pageMods.slice(pageMods.indexOf(pageMod), 1);
+    });
+    Cu.reportError("Frame script evaluated!");
+    } catch(e) {
+      Cu.reportError("frame ex: "+e);
+    }
+  }, true);
+
+  let pageMods = [];
+  PageModManager = function () {return {
+    add: function (pageMod) {
+      let includes = [];
+      for each(let r in pageMod.include)
+        includes.push(r);
+      let pm = {
+        include: includes,
+        contentScriptWhen: pageMod.contentScriptWhen,
+        contentScriptFile: Array.isArray(pageMod.contentScriptFile)?pageMod.contentScriptFile:[pageMod.contentScriptFile],
+        contentScript: pageMod.contentScript
+      };
+      pageMods.push(pm);
+      console.log("Go register page mod");
+    },
+    remove: function (pageMod) {
+      // TODO: remove pageMod from `pageMods` list
+    },
+    on: function (url) {},
+    off: function () {}
+  };}
+  
+  globalMM.addMessageListener("new-tab", function (msg) {
+    msg.target.frameLoader.messageManager.sendAsyncMessage("add-page-mods", pageMods);
+    msg.target.frameLoader.messageManager.sendAsyncMessage("worker-url", require("self").data.url("worker.js"));
+  });
+  
+
+}
+else if (require("api-utils/xul-app").is("Fennec")) {
+  let { Cc, Ci } = require("chrome");
+
+  let globalMM = Cc["@mozilla.org/globalmessagemanager;1"].getService(
                    Ci.nsIChromeFrameMessageManager);
 
   PageModManager = Registry.resolve({
