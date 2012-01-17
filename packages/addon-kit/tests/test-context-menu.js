@@ -52,7 +52,6 @@ const OVERFLOW_POPUP_ID = "jetpack-content-menu-overflow-popup";
 
 const TEST_DOC_URL = module.uri.replace(/\.js$/, ".html");
 
-
 // Destroying items that were previously created should cause them to be absent
 // from the menu.
 exports.testConstructDestroy = function (test) {
@@ -546,7 +545,6 @@ exports.testMultipleContexts = function (test) {
   });
 };
 
-
 // Once a context is removed, it should no longer cause its item to appear.
 exports.testRemoveContext = function (test) {
   test = new TestHelper(test);
@@ -996,7 +994,6 @@ exports.testMenuClick = function (test) {
     });
   });
 };
-
 
 // Click listeners should work when multiple modules are loaded.
 exports.testItemClickMultipleModules = function (test) {
