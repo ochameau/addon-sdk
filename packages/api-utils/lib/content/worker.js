@@ -160,8 +160,8 @@ const WorkerSandbox = EventEmitter.compose({
     // Handle messages send by this script:
     let self = this;
     // console.xxx calls
-    this.on("console", function console(kind) {
-      console[kind].apply(null, Array.slice(arguments, 1));
+    this.on("console", function consoleListener(kind) {
+      console[kind].apply(console, Array.slice(arguments, 1));
     });
 
     // self.postMessage calls

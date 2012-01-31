@@ -6,6 +6,7 @@
 
 const { Cc, Ci } = require('chrome');
 const timer = require('timer');
+const { Loader } = require("@loader");
 
 function makeWindow(contentURL) {
   let content =
@@ -328,6 +329,61 @@ exports['test:nothing is leaked to content script'] = function(test) {
       }
     });
 
+  }, true);
+
+}
+
+exports['test:ensure console.xxx works in cs'] = function(test) {
+  test.waitUntilDone(5000);
+
+  // Create a new module loader in order to be able to create a `console`
+  // module mockup:
+  let sandbox = Loader.new(require("@packaging"));
+  let sandboxRequire = Loader.require.bind(sandbox, module.path);
+  Object.defineProperty(sandbox.globals, 'console', {
+    value: {
+      log: hook.bind("log"),
+      info: hook.bind("info"),
+      warn: hook.bind("warn"),
+      error: hook.bind("error"),
+      debug: hook.bind("debug"),
+      exception: hook.bind("exception")
+    }
+  });
+
+  // Intercept all console method calls
+  let calls = [];
+  function hook(msg) {
+    test.assertEqual(this, msg,
+                     "console.xxx(\"xxx\"), i.e. message is equal to the " +
+                     "console method name we are calling");
+    calls.push(msg);
+  }
+
+  // Finally, create a worker that will call all console methods
+  let window = makeWindow();
+  window.addEventListener("load", function onload() {
+    window.removeEventListener("load", onload, true);
+
+    let worker =  sandboxRequire('content/worker').Worker({
+      window: window,
+      contentScript: 'new ' + function WorkerScope() {
+        console.log("log");
+        console.info("info");
+        console.warn("warn");
+        console.error("error");
+        console.debug("debug");
+        console.exception("exception");
+        self.postMessage();
+      },
+      onMessage: function() {
+        // Ensure that console methods are called in the same execution order
+        test.assertEqual(JSON.stringify(calls),
+                         JSON.stringify(["log", "info", "warn", "error", "debug", "exception"]),
+                         "console has been called successfully, in the expected order");
+        test.done();
+      }
+    });
   }, true);
 
 }
