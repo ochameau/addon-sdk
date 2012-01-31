@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 "use stirct";
 
 const { Cc, Ci } = require('chrome');
@@ -163,12 +167,11 @@ exports['test:post-json-values-only'] = function(test) {
   
   window.addEventListener("load", function onload() {
     window.removeEventListener("load", onload, true);
-try {
+
     let worker =  Worker({
         window: window.document.getElementById("content").contentWindow,
         contentScript: 'new ' + function WorkerScope() {
           self.on('message', function (message) {
-            dump("message: "+JSON.stringify(message)+"\n");
             self.postMessage([ message.fun === undefined,
                                typeof message.w,
                                message.w && "port" in message.w,
@@ -180,63 +183,75 @@ try {
       });
 
     // Validate worker.onMessage
+    let array = [1, 2, 3];
     worker.on('message', function (message) {
       test.assert(message[0], "function becomes undefined");
       test.assertEqual(message[1], "object", "object stays object");
       test.assert(message[2], "object's attributes are enumerable");
       test.assertEqual(message[3], "about:blank", "jsonable attributes are accessible");
-      // See bug 714891, Arrays may be broken over compartments:
+      // See bug 714891, Arrays may be broken over compartements:
       test.assert(message[4], "Array keeps being an array");
-      test.assertEqual(message[5], "[1,2,3]", "Array is correctly serialized");
+      test.assertEqual(message[5], JSON.stringify(array),
+                       "Array is correctly serialized");
       test.done();
     });
-    worker.postMessage({ fun: function () {}, w: worker, array: [1, 2, 3] });
-} catch(e) {
-  console.log("exception");
-  console.log(e);
-}
+    worker.postMessage({ fun: function () {}, w: worker, array: array });
+
   }, true);
 
 };
 
 
 exports['test:emit-json-values-only'] = function(test) {
-  let window = makeWindow();
+  let window = makeWindow("data:text/html,");
   test.waitUntilDone();
   
-  let worker =  Worker({
-      window: window,
-      contentScript: 'new ' + function WorkerScope() {
-        // Validate self.on and self.emit
-        self.port.on('addon-to-content', function (fun, w, obj) {
-          self.port.emit('content-to-addon', [
-                          fun === null,
-                          typeof w,
-                          "port" in w,
-                          w.url,
-                          "fun" in obj,
-                          Object.keys(obj.dom).length
-                        ]);
-        });
-      }
+  window.addEventListener("load", function onload() {
+    window.removeEventListener("load", onload, true);
+  
+    let win = window.document.getElementById("content").contentWindow;
+    let worker =  Worker({
+        window: win,
+        contentScript: 'new ' + function WorkerScope() {
+          // Validate self.on and self.emit
+          self.port.on('addon-to-content', function (fun, w, obj, array) {
+            self.port.emit('content-to-addon', [
+                            fun === null,
+                            typeof w,
+                            "port" in w,
+                            w.url,
+                            "fun" in obj,
+                            Object.keys(obj.dom).length,
+                            Array.isArray(array),
+                            JSON.stringify(array)
+                          ]);
+          });
+        }
+      });
+    
+    // Validate worker.port
+    let array = [1, 2, 3];
+    worker.port.on('content-to-addon', function (result) {
+      test.assert(result[0], "functions become null");
+      test.assertEqual(result[1], "object", "objects stay objects");
+      test.assert(result[2], "object's attributes are enumerable");
+      test.assertEqual(result[3], "about:blank", "json attribute is accessible");
+      test.assert(!result[4], "function as object attribute is removed");
+      test.assertEqual(result[5], 0, "DOM nodes are converted into empty object");
+      // See bug 714891, Arrays may be broken over compartments:
+      test.assert(result[6], "Array keeps being an array");
+      test.assertEqual(result[7], JSON.stringify(array),
+                       "Array is correctly serialized");
+      test.done();
     });
   
-  // Validate worker.port
-  worker.port.on('content-to-addon', function (result) {
-    test.assertEqual(result[0], true, "functions become null");
-    test.assertEqual(result[1], "object", "objects stay objects");
-    test.assertEqual(result[2], true, "object's attributes are enumerable");
-    test.assertEqual(result[3], window.document.location.href,
-                     "json attribute is accessible");
-    test.assertEqual(result[4], false, "function as object attribute is removed");
-    test.assertEqual(result[5], 0, "DOM nodes are converted into empty object");
-    test.done();
-  });
-  let obj = {
-    fun: function () {},
-    dom: window.document.documentElement
-  };
-  worker.port.emit('addon-to-content', function () {}, worker, obj);
+    let obj = {
+      fun: function () {},
+      dom: window.document.createElement("div")
+    };
+    worker.port.emit("addon-to-content", function () {}, worker, obj, array);
+
+  }, true);
 }
 
 exports['test:content is wrapped'] = function(test) {

@@ -88,6 +88,15 @@ have to send messages between the content script and the main add-on code.
 API or (preferably, usually) the
 [`port`](dev-guide/addon-development/content-scripts/using-port.html) API.
 
+<div class="warning">
+<p>Unless your content script is extremely simple and consists only of a
+static string, don't use <code>contentScript</code>: if you do, you may
+have problems getting your add-on approved on AMO.</p>
+<p>Instead, keep the script in a separate file and load it using
+<code>contentScriptFile</code>. This makes your code easier to maintain,
+secure, debug and review.</p>
+</div>
+
 <!-- The icons this widget displays, shown in the screenshot, is taken from the
 Glossy Buttons icon set created by IconEden which is made freely available for
 commercial and non-commercial use.
@@ -270,9 +279,9 @@ constructor: if you do this, the panel is automatically displayed when the
 user clicks the widget.
 
 <!-- The icon the widget displays, shown in the screenshot, is taken from the
-Nuvola icon set, http://www.icon-king.com/projects/nuvola/ which is made
-available under the LGPL 2.1:
-http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html -->
+Circular icon set, http://prothemedesign.com/circular-icons/ which is made
+available under the Creative Commons Attribution 2.5 Generic License:
+http://creativecommons.org/licenses/by/2.5/ -->
 
 <img class="image-right" src="static-files/media/screenshots/widget-panel-clock.png"
 alt="Panel attached to a widget">

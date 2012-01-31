@@ -1,3 +1,7 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+
 <!-- contributed by Felipe Gomes [felipc@gmail.com] -->
 
 The `page-worker` module provides a way to create a permanent, invisible page
@@ -78,6 +82,15 @@ For conciseness, this example creates the content script as a string and uses
 the `contentScript` property. In your own add-ons, you will probably want to
 create your content scripts in separate files and pass their URLs using the
 `contentScriptFile` property.
+
+<div class="warning">
+<p>Unless your content script is extremely simple and consists only of a
+static string, don't use <code>contentScript</code>: if you do, you may
+have problems getting your add-on approved on AMO.</p>
+<p>Instead, keep the script in a separate file and load it using
+<code>contentScriptFile</code>. This makes your code easier to maintain,
+secure, debug and review.</p>
+</div>
 
 To learn much more about content scripts, see the
 [Working with Content Scripts](dev-guide/addon-development/web-content.html)

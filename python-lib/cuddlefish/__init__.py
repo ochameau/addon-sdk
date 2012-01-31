@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import sys
 import os
 import optparse
@@ -143,6 +147,10 @@ parser_groups = (
                                       "fennec-on-device, xulrunner or "
                                       "thunderbird"),
                                 metavar=None,
+                                type="choice",
+                                choices=["firefox", "fennec",
+                                         "fennec-on-device", "thunderbird",
+                                         "xulrunner"],
                                 default="firefox",
                                 cmds=['test', 'run', 'testex', 'testpkgs',
                                       'testall'])),
@@ -168,7 +176,8 @@ parser_groups = (
         (("", "--mobile-app",), dict(dest="mobile_app_name",
                                     help=("Name of your Android application to "
                                           "use. Possible values: 'firefox', "
-                                          "'firefox_beta', 'firefox_nightly'."),
+                                          "'firefox_beta', 'fennec_aurora', "
+                                          "'fennec' (for nightly)."),
                                     metavar=None,
                                     default=None,
                                     cmds=['run', 'test', 'testall'])),
@@ -503,16 +512,14 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     elif command == "docs":
         from cuddlefish.docs import generate
         if len(args) > 1:
-            docs_home = generate.generate_docs(env_root, filename=args[1])
+            docs_home = generate.generate_named_file(env_root, filename=args[1])
         else:
-            docs_home = generate.generate_docs(env_root)
+            docs_home = generate.generate_local_docs(env_root)
             webbrowser.open(docs_home)
         return
     elif command == "sdocs":
         from cuddlefish.docs import generate
-
-        # TODO: Allow user to change this filename via cmd line.
-        filename = generate.generate_static_docs(env_root, base_url=options.baseurl)
+        filename = generate.generate_static_docs(env_root)
         print >>stdout, "Wrote %s." % filename
         return
 
@@ -765,6 +772,11 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
                              used_files=used_files,
                              enable_mobile=options.enable_mobile,
                              mobile_app_name=options.mobile_app_name)
+        except ValueError, e:
+            print ""
+            print "A given cfx option has an inappropriate value:"
+            print >>sys.stderr, "  " + "  \n  ".join(str(e).split("\n"))
+            retval = -1
         except Exception, e:
             if str(e).startswith(MOZRUNNER_BIN_NOT_FOUND):
                 print >>sys.stderr, MOZRUNNER_BIN_NOT_FOUND_HELP.strip()
