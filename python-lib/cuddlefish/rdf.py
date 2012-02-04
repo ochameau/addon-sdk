@@ -162,6 +162,26 @@ def gen_manifest(template_root_dir, target_cfg, jid,
         elem.appendChild(dom.createTextNode("11.0a1"))
         ta_desc.appendChild(elem)
 
+    # TODO: Inject TB compatibility only when a specific flag is given
+    dom = manifest.dom
+    target_app = dom.createElement("em:targetApplication")
+    dom.documentElement.getElementsByTagName("Description")[0].appendChild(target_app)
+
+    ta_desc = dom.createElement("Description")
+    target_app.appendChild(ta_desc)
+
+    elem = dom.createElement("em:id")
+    elem.appendChild(dom.createTextNode("{3550f703-e582-4d05-9a08-453d09bdfdc6}"))
+    ta_desc.appendChild(elem)
+
+    elem = dom.createElement("em:minVersion")
+    elem.appendChild(dom.createTextNode("9"))
+    ta_desc.appendChild(elem)
+
+    elem = dom.createElement("em:maxVersion")
+    elem.appendChild(dom.createTextNode("12"))
+    ta_desc.appendChild(elem)
+
     if target_cfg.get("homepage"):
         manifest.set("em:homepageURL", target_cfg.get("homepage"))
     else:

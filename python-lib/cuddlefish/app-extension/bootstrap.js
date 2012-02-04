@@ -85,8 +85,8 @@ function getAppStartupTopic() {
     case ids.Firefox:
     case ids.SeaMonkey:
       return 'sessionstore-windows-restored';
-    case ids.Thunderbird:
-      return 'mail-startup-done';
+    /*case ids.Thunderbird:
+      return 'mail-startup-done';*/
     // Temporary, until Fennec Birch will support sessionstore event
     case ids.Fennec:
     default:
