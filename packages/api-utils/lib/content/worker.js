@@ -310,6 +310,7 @@ const Worker = EventEmitter.compose({
     this._port = EventEmitterTrait.create({
       emit: function () self._emitEventToContent(Array.slice(arguments))
     });
+
     // expose wrapped port, that exposes only public properties:
     // We need to destroy this getter in order to be able to set the
     // final value. We need to update only public port attribute as we never 
