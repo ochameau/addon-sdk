@@ -1,4 +1,7 @@
 const ContentWorker = Object.freeze({
+  // TODO: Bug 727854 Use same implementation than common JS modules,
+  // i.e. EventEmitter module
+
   /**
    * Create an EventEmitter instance.
    */
