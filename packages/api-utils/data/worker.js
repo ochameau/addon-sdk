@@ -20,7 +20,7 @@ const ContentWorker = Object.freeze({
       once: function once(name, callback) {
         eventEmitter.on(name, function onceCallback() {
           eventEmitter.removeListener(name, onceCallback);
-          callback.apply(null, arguments);
+          callback.apply(callback, arguments);
         });
       },
       removeListener: function removeListener(name, callback) {
@@ -59,7 +59,7 @@ const ContentWorker = Object.freeze({
    * by passing only strings between compartments.
    * This function expects `emitToChrome` function, that allows to send 
    * events to the chrome module. It returns the EventEmitter as `pipe` 
-   * attribute, and, `onChromeEvent` a function that allows chrome module 
+   * attribute, and, `onChromeEvent` a function that allows chrome module
    * to send event into the EventEmitter.
    *
    *                  pipe.emit --> emitToChrome
@@ -83,8 +83,13 @@ const ContentWorker = Object.freeze({
 
     return {
       pipe: eventEmitter,
-      onChromeEvent: function onChromeEvent(args) {
-        return emit.apply(null, typeof args == "string" ? JSON.parse(args) : args);
+      onChromeEvent: function onChromeEvent(array) {
+        // We either receive a stringified array, or a real array.
+        // We still allow to pass an array of objects, in WorkerSandbox.emitSync
+        // in order to allow sending DOM node reference between content script
+        // and modules (only used for context-menu API)
+        let args = typeof array == "string" ? JSON.parse(array) : array;
+        return emit.apply(null, args);
       },
       hasListenerFor: hasListenerFor
     };
@@ -114,15 +119,15 @@ const ContentWorker = Object.freeze({
 
     // Keep a reference to original timeout functions
     let {
-      setTimeout: safeSetTimeout,
-      setInterval: safeSetInterval,
-      clearTimeout: safeClearTimeout,
-      clearInterval: safeClearInterval
+      setTimeout: chromeSetTimeout,
+      setInterval: chromeSetInterval,
+      clearTimeout: chromeClearTimeout,
+      clearInterval: chromeClearInterval
     } = chromeAPI.timers;
 
     exports.setTimeout = function ContentScriptSetTimeout(callback, delay) {
       let params = Array.slice(arguments, 2);
-      let id = safeSetTimeout(function() {
+      let id = chromeSetTimeout(function() {
         try {
           delete _timers[id];
           callback.apply(null, params);
@@ -135,12 +140,12 @@ const ContentWorker = Object.freeze({
     };
     exports.clearTimeout = function ContentScriptClearTimeout(id) {
       delete _timers[id];
-      return safeClearTimeout(id);
+      return chromeClearTimeout(id);
     };
 
     exports.setInterval = function ContentScriptSetInterval(callback, delay) {
       let params = Array.slice(arguments, 2);
-      let id = safeSetInterval(function() {
+      let id = chromeSetInterval(function() {
         try {
           callback.apply(null, params); 
         } catch(e) {
@@ -152,16 +157,16 @@ const ContentWorker = Object.freeze({
     };
     exports.clearInterval = function ContentScriptClearInterval(id) {
       delete _timers[id];
-      return safeClearInterval(id);
+      return chromeClearInterval(id);
     };
     pipe.on("destroy", function clearTimeouts() {
       // Unregister all setTimeout/setInterval on page unload
       for (let id in _timers) {
         let kind = _timers[id];
         if (kind == "timeout")
-          safeClearTimeout(id);
+          chromeClearTimeout(id);
         else
-          safeClearInterval(id);
+          chromeClearInterval(id);
       }
     });
   },

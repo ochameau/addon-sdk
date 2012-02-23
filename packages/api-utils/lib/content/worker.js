@@ -239,7 +239,7 @@ const WorkerSandbox = EventEmitter.compose({
       evaluate(this._sandbox, code, filename || 'javascript:' + code);
     }
     catch(e) {
-      console.exception(e);
+      this._addonWorker._emit('error', e);
     }
   },
   /**
@@ -262,7 +262,7 @@ const WorkerSandbox = EventEmitter.compose({
           throw Error("Unsupported `contentScriptFile` url: " + String(uri));
       }
       catch(e) {
-        console.exception(e)
+        this._addonWorker._emit('error', e);
       }
     }
   }
@@ -341,14 +341,13 @@ const Worker = EventEmitter.compose({
       this._earlyEvents.push(args);
       return;
     }
-    
+
     // We throw exception when the worker has been destroyed
     if (!this._contentWorker) {
       throw new Error(ERR_DESTROYED);
     }
 
-    // Ensure that we pass only JSON values
-    let array = Array.slice(args);
+    // Forward the event to the WorkerSandbox object
     this._contentWorker.emit.apply(null, ["event"].concat(args));
   },
   
