@@ -1,0 +1,4 @@
+{
+  "name": "test-l10n",
+  "dependencies": ["addon-kit", "api-utils"]
+}
