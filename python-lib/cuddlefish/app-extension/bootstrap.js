@@ -183,7 +183,8 @@ function startup(data, reason) {
   // on add-on.
   promise(function() {
     try {
-      loader.spawn(options.main, options.mainPath);
+      let chromeEntryPoint = loader.require('api-utils/chrome-entry-point');
+      chromeEntryPoint.main(loader, options.main, options.mainPath);
     } catch (error) {
       // If at this stage we have an error only thing we can do is report about
       // it via error console. Keep in mind that error won't automatically show
@@ -192,25 +193,20 @@ function startup(data, reason) {
       throw error;
     }
   });
-
 };
 
 function shutdown(data, reason) {
   // If loader is already present unload it, since add-on is disabled.
   if (loader) {
     reason = REASON[reason];
-    let system = loader.require('api-utils/system');
     loader.unload(reason);
+
+    let chromeEntryPoint = loader.require('api-utils/chrome-entry-point');
+    chromeEntryPoint.unload(reason);
 
     // Bug 724433: We need to unload JSM otherwise it will stay alive
     // and keep a reference to this compartment.
     Cu.unload(loaderUri);
     loader = null;
-
-    // If add-on is lunched via `cfx run` we need to use `system.exit` to let
-    // cfx know we're done (`cfx test` will take care of exit so we don't do
-    // anything here).
-    if (system.env.CFX_COMMAND === 'run' && reason === 'shutdown')
-      system.exit(0);
   }
 };

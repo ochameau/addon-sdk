@@ -34,9 +34,11 @@ function process(target, id, path, scope) {
   let load = loadScript.bind(null, target);
 
   load(packaging.uriPrefix + packaging.loader, false);
+
   load('data:,' + encodeURIComponent(
            'let loader = Loader.new(' + JSON.stringify(packaging) + ');\n' +
-           'loader.main("' + id + '", "' + path + '");'), false);
+           'let entryPoint = loader.require("api-utils/remote-entry-point");\n' + 
+           'entryPoint.main(loader, "' + id + '", "' + path + '");'), false);
 
   when(function (reason) {
     // Please note that it's important to unload remote loader
@@ -45,8 +47,8 @@ function process(target, id, path, scope) {
     // Bug 724433: Take care to nullify all globals set by `cuddlefish.js`
     // otherwise, we will leak any still defined global.
     // `dump` is set in Loader.new method, `dump = globals.dump;`
-    load('data:,loader.unload("' + reason + '");' +
-         'loader = null; Loader = null; dump = null;', true);
+    load('data:,entryPoint.unload("' + reason + '");' +
+         'entryPoint = null; loader = null; Loader = null; dump = null;', true);
   });
 
   return {
