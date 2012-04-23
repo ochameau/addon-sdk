@@ -5,6 +5,7 @@
 
 const { Cc, Ci } = require("chrome");
 const { getPreferedLocales, findClosestLocale } = require("api-utils/l10n/locale");
+const { defer } = require("api-utils/promise");
 
 // Get URI for the addon root folder:
 const { rootURI } = require("@packaging");
@@ -26,64 +27,77 @@ exports.language = function language() {
 }
 
 function readURI(uri) {
+  let { promise, resolve, reject } = defer();
+
   let request = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].
                 createInstance(Ci.nsIXMLHttpRequest);
-  request.open('GET', uri, false);
+  request.open('GET', uri, true);
   request.overrideMimeType('text/plain');
+  request.onload = function () {
+    resolve(request.responseText);
+  }
+  request.onerror = function () {
+    reject("Error while reading file: " + uri + " status:" + request.status);
+  }
   request.send();
-  return request.responseText;
+
+  return promise;
 }
 
 function readJsonUri(uri) {
-  try {
-    return JSON.parse(readURI(uri));
-  }
-  catch(e) {
-    console.error("Error while reading locale file:\n" + uri + "\n" + e);
-  }
-  return {};
+  return readURI(uri).then(function (content) {
+    try {
+      return JSON.parse(content);
+    }
+    catch(e) {
+      throw Error("Error while reading locale file:\n" + uri + "\n" + e);
+    }
+  });
 }
 
 // Returns the array stored in `locales.json` manifest that list available
 // locales files
 function getAvailableLocales() {
   let uri = rootURI + "locales.json";
-  let manifest = readJsonUri(uri);
-
-  return "locales" in manifest &&
-          Array.isArray(manifest.locales) ?
-         manifest.locales : [];
+  return readJsonUri(uri).then(function (manifest) {
+    return "locales" in manifest &&
+           Array.isArray(manifest.locales) ?
+           manifest.locales : [];
+  });
 }
 
 // Returns URI of the best locales file to use from the XPI
 function getBestLocaleFile() {
-
   // Read localization manifest file that contains list of available languages
-  let availableLocales = getAvailableLocales();
+  return getAvailableLocales().then(function (availableLocales) {
+    // Retrieve list of prefered locales to use
+    let preferedLocales = getPreferedLocales();
 
-  // Retrieve list of prefered locales to use
-  let preferedLocales = getPreferedLocales();
+    // Compute the most preferable locale to use by using these two lists
+    bestMatchingLocale = findClosestLocale(availableLocales, preferedLocales);
 
-  // Compute the most preferable locale to use by using these two lists
-  bestMatchingLocale = findClosestLocale(availableLocales, preferedLocales);
+    // It may be null if the addon doesn't have any locale file
+    if (!bestMatchingLocale)
+      return null;
 
-  // It may be null if the addon doesn't have any locale file
-  if (!bestMatchingLocale)
-    return null;
+    let localeURI = rootURI + "locale/" + bestMatchingLocale + ".json";
+    return localeURI;
+  });
 
-  return rootURI + "locale/" + bestMatchingLocale + ".json";
 }
 
-function init() {
+exports.init = function init() {
   // First, search for a locale file:
-  let localeURI = getBestLocaleFile();
-  if (!localeURI)
-    return;
+  return getBestLocaleFile().then(function (localeURI) {
+    if (!localeURI)
+      throw Error("Unable to find any usable locale file");
 
-  // Locale files only contains one big JSON object that is used as
-  // an hashtable of: "key to translate" => "translated key"
-  // TODO: We are likely to change this in order to be able to overload
-  //       a specific key translation. For a specific package, module or line?
-  globalHash = readJsonUri(localeURI);
+    // Locale files only contains one big JSON object that is used as
+    // an hashtable of: "key to translate" => "translated key"
+    // TODO: We are likely to change this in order to be able to overload
+    //       a specific key translation. For a specific package, module or line?
+    return readJsonUri(localeURI, function (json) {
+      globalHash = json;
+    });
+  });
 }
-init();

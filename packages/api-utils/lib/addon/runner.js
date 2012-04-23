@@ -62,7 +62,7 @@ function startup(reason, options) {
   if (reason === 'startup')
     return wait(reason, options);
 
-  // Try initializing localization module before running main module. Just print
+  // Try initializing HTML localization before running main module. Just print
   // an exception in case of error, instead of preventing addon to be run.
   try {
     // Do not enable HTML localization while running test as it is hard to
@@ -73,6 +73,21 @@ function startup(reason, options) {
   } catch(error) {
     console.exception(error);
   }
+  // Load localization manifest and .properties files.
+  // Run the addon even in case of error (best effort approach)
+  let callback = onLocalizationReady.bind(null, options);
+  require("api-utils/l10n/core").
+    init().
+    then(function success() {
+           onLocalizationReady(options);
+         },
+         function (error) {
+           console.warning("Error while loading localization: " + error);
+           onLocalizationReady(options);
+         });
+}
+
+function onLocalizationReady(options) {
   try {
     // TODO: When bug 564675 is implemented this will no longer be needed
     // Always set the default prefs, because they disappear on restart
