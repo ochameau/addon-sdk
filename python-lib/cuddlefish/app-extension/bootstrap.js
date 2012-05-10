@@ -89,35 +89,11 @@ function startup(data, reasonCode) {
     // Import `cuddlefish.js` module using `Cu.import` and bootstrap loader.
     let module = Cu.import(loaderURI);
     unload = module.unload;
-    loader = module.Loader({
-      // Add-on ID used by different APIs as a unique identifier.
-      id: id,
-      // Add-on name.
-      name: options.name,
-      // Add-on version.
-      version: options.metadata[options.name].version,
-      // Add-on package descriptor.
-      metadata: options.metadata[options.name],
-      // Main id and URI.
-      main: { id: options.main, uri: prefixURI + options.mainPath },
-      // Add-on load reason.
-      loadReason: reason,
-
-      // Add-on URI.
-      rootURI: rootURI,
-      prefixURI: prefixURI,
+    let loaderOptions = {
       baseURI: 'resource:///modules/',
 
       // modules manifest
       manifest: options.manifest,
-
-      // options used by system module.
-      // File to write 'OK' or 'FAIL' (exit code emulation).
-      resultFile: options.resultFile,
-      // File to write stdout.
-      logFile: options.logFile,
-      // Arguments passed as --static-args
-      staticArgs: options.staticArgs,
 
       // Arguments related to test runner.
       modules: {
@@ -128,16 +104,41 @@ function startup(data, reasonCode) {
           profileMemory: options.profileMemory,
           stopOnError: options.stopOnError,
           verbose: options.verbose,
-        }
+        },
+        '@packaging': {
+          // Add-on ID used by different APIs as a unique identifier.
+          id: id,
+          // Add-on name.
+          name: options.name,
+          // Add-on version.
+          version: options.metadata[options.name].version,
+          // Add-on package descriptor.
+          metadata: options.metadata[options.name],
+          // Main id and URI.
+          main: { id: options.main, uri: prefixURI + options.mainPath },
+          // Add-on load reason.
+          loadReason: reason,
+
+          // Add-on URI.
+          rootURI: rootURI,
+          prefixURI: prefixURI,
+
+          // options used by system module.
+          // File to write 'OK' or 'FAIL' (exit code emulation).
+          resultFile: options.resultFile,
+          // File to write stdout.
+          logFile: options.logFile,
+          // Arguments passed as --static-args
+          staticArgs: options.staticArgs
+        },
+        '@loader/options': JSON.parse(JSON.stringify(loaderOptions))
       }
-    });
+    };
+    loader = module.Loader(loaderOptions);
 
     let require = Require(loader, { uri: loaderURI });
     require('api-utils/addon/runner').startup(reason, {
       loader: loader,
-      // To workaround bug 674195 we pass in load from the same context as
-      // loader this way freeze in load won't throw.
-      load: module.load,
       prefsURI: rootURI + 'defaults/preferences/prefs.js'
     });
   } catch (error) {

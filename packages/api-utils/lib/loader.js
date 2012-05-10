@@ -320,7 +320,7 @@ const Loader = iced(function Loader(options) {
   // Define pseudo modules.
   modules = override({
     '@loader/unload': destructor,
-    '@loader/options': JSON.parse(JSON.stringify(options)),
+    '@loader': exports,
     'chrome': { Cc: Cc, CC: CC, Ci: Ci, Cu: Cu, Cr: Cr, Cm: Cm,
                 components: Components }
   }, modules);
