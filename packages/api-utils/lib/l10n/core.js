@@ -10,7 +10,10 @@ const { defer } = require("api-utils/promise");
 // Get URI for the addon root folder:
 const { rootURI } = require("@packaging");
 
+// Two global objects initialized during `init()` call:
+// A dictionnary which maps keys to translate into translated strings
 let globalHash = {};
+// A string for the selected locale, like "ja-JP-mac"
 let bestMatchingLocale = null;
 
 exports.get = function get(k) {
@@ -23,7 +26,9 @@ exports.locale = function locale() {
 }
 // Returns the short locale code: ja, en, fr
 exports.language = function language() {
-  return bestMatchingLocale.split("-")[0].toLowerCase();
+  return bestMatchingLocale
+         ? bestMatchingLocale.split("-")[0].toLowerCase()
+         : null;
 }
 
 function readURI(uri) {
@@ -37,7 +42,7 @@ function readURI(uri) {
     resolve(request.responseText);
   }
   request.onerror = function () {
-    reject("Error while reading file: " + uri + " status:" + request.status);
+    reject("Failed to read: " + uri + " (status: " + request.status + ")");
   }
   request.send();
 
