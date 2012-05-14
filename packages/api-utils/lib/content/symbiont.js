@@ -40,6 +40,8 @@ const Symbiont = Worker.resolve({
         this.contentURL = options.contentURL;
     if ('contentScriptWhen' in options)
       this.contentScriptWhen = options.contentScriptWhen;
+    if ('contentScriptOptions' in options)
+      this.contentScriptOptions = options.contentScriptOptions;
     if ('contentScriptFile' in options)
       this.contentScriptFile = options.contentScriptFile;
     if ('contentScript' in options)
@@ -58,6 +60,12 @@ const Symbiont = Worker.resolve({
       this._hiddenFrame = hiddenFrames.HiddenFrame({
         onReady: function onFrame() {
           self._initFrame(this.element);
+        },
+        onUnload: function onUnload() {
+          // Bug 751211: Remove reference to _frame when hidden frame is
+          // automatically removed on unload, otherwise we are going to face
+          // "dead object" exception
+          self.destroy();
         }
       });
       hiddenFrames.add(this._hiddenFrame);

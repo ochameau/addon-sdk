@@ -62,6 +62,10 @@ function startup(reason, options) {
   if (reason === 'startup')
     return wait(reason, options);
 
+  // Inject globals ASAP in order to have console API working ASAP
+  let loader = options.loader;
+  override(loader.globals, globals);
+
   // Try initializing HTML localization before running main module. Just print
   // an exception in case of error, instead of preventing addon to be run.
   try {
@@ -93,8 +97,6 @@ function onLocalizationReady(options) {
     // Always set the default prefs, because they disappear on restart
     setDefaultPrefs();
 
-    let loader = options.loader;
-    override(loader.globals, globals);
     // this is where the addon's main.js finally run.
     let program = load(loader, loader.main).exports;
 
