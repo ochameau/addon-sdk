@@ -512,6 +512,10 @@ def run_app(harness_root_dir, manifest_rdf, harness_options,
         addon_dir = os.path.join(mydir, "mobile-utils")
         addons.append(addon_dir)
 
+    # Bug 730369: Do not alter any preference if the profile already exists
+    if os.path.exists(os.path.join(profiledir, "prefs.js")):
+      preferences = dict()
+
     # the XPI file is copied into the profile here
     profile = profile_class(addons=addons,
                             profile=profiledir,
