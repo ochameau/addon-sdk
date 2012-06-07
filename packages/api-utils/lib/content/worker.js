@@ -108,9 +108,14 @@ const WorkerSandbox = EventEmitter.compose({
     let window = worker._window;
     let proto = window;
 
+    let principals = window;
+    if (worker.additionalDomains && worker.additionalDomains.length > 0)
+      principals = [window];//.concat(worker.additionalDomains);
+    console.log("principal: " + principals);
+
     // Instantiate trusted code in another Sandbox in order to prevent content
     // script from messing with standard classes used by proxy and API code.
-    let apiSanbox = sandbox(window, { wantXrays: true });
+    let apiSanbox = sandbox(principals, { wantXrays: true });
 
     // Build content proxies only if the document has a non-system principal
     if (XPCNativeWrapper.unwrap(window) !== window) {
@@ -123,7 +128,7 @@ const WorkerSandbox = EventEmitter.compose({
 
     // Create the sandbox and bind it to window in order for content scripts to
     // have access to all standard globals (window, document, ...)
-    let content = this._sandbox = sandbox(window, {
+    let content = this._sandbox = sandbox(principals, {
       sandboxPrototype: proto,
       wantXrays: true
     });
@@ -395,6 +400,8 @@ const Worker = EventEmitter.compose({
       this.contentScriptOptions = options.contentScriptOptions;
     if ('contentScript' in options)
       this.contentScript = options.contentScript;
+    if ('additionalDomains' in options)
+      this.additionalDomains = options.additionalDomains;
     if ('onError' in options)
       this.on('error', options.onError);
     if ('onMessage' in options)

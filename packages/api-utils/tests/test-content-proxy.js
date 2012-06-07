@@ -31,8 +31,13 @@ function createProxyTest(html, callback) {
           let helper = {
             xrayWindow: xrayWindow,
             rawWindow: rawWindow,
-            createWorker: function (contentScript) {
-              return createWorker(test, xrayWindow, contentScript, helper.done);
+            createWorker: function (contentScriptOrOptions) {
+              let options;
+              if (typeof contentScriptOrOptions == "string")
+                options = {contentScript: contentScriptOrOptions};
+              else
+                options = contentScriptOrOptions;
+              return createWorker(test, xrayWindow, options, helper.done);
             },
             done: function () {
               if (done)
@@ -53,7 +58,7 @@ function createProxyTest(html, callback) {
   };
 }
 
-function createWorker(test, xrayWindow, contentScript, done) {
+function createWorker(test, xrayWindow, options, done) {
   // We have to use Sandboxed loader in order to get access to the private
   // unlock key `PRIVATE_KEY`. This key should not be used anywhere else.
   // See `PRIVATE_KEY` definition in worker.js
@@ -63,6 +68,8 @@ function createWorker(test, xrayWindow, contentScript, done) {
   let worker = Worker({
     exposeUnlockKey : key,
     window: xrayWindow,
+    additionalDomains: options.additionalDomains,
+    contentScriptOptions: options.contentScriptOptions,
     contentScript: [
       'new ' + function () {
         assert = function assert(v, msg) {
@@ -72,7 +79,7 @@ function createWorker(test, xrayWindow, contentScript, done) {
           self.port.emit("done");
         }
       },
-      contentScript
+      options.contentScript
     ]
   });
 
@@ -85,7 +92,7 @@ function createWorker(test, xrayWindow, contentScript, done) {
 }
 
 /* Examples for the `createProxyTest` uses */
-
+/*
 let html = "<script>var documentGlobal = true</script>";
 exports.testCreateProxyTest = createProxyTest(html, function (helper, test) {
   // You can get access to regular `test` object in second argument of
@@ -301,7 +308,7 @@ exports.testStringOverload = createProxyTest(html, function (helper, test) {
     }
   );
 });
-*/
+
 
 exports.testMozMatchedSelector = createProxyTest("", function (helper) {
   helper.createWorker(
@@ -806,5 +813,49 @@ exports.testCrossDomainIframe = createProxyTest("", function (helper) {
   });
 
   worker.postMessage("http://localhost:" + serverPort + "/");
+
+});
+*/
+exports.testCrossDomainFeatures = createProxyTest("", function (helper) {
+  let serverPort = 8100;
+  let server = require("httpd").startServerAsync(serverPort);
+  server.registerPathHandler("/", function handle(request, response) {
+    // Returns an test content that we will assert
+    console.log("GET request");
+    response.write("foo");
+  });
+
+  let url = "http://localhost:" + serverPort + "/";
+  
+  let worker = helper.createWorker({
+    contentScript: 'new ' + function ContentScriptScope() {
+      dump("foooo\n");
+      let url = self.options.url
+      // Creates an iframe with this page
+      let iframe = document.createElement("iframe");
+      iframe.addEventListener("load", function onload() {
+        dump("load\n");
+        iframe.removeEventListener("load", onload, true);
+        try {
+          assert(String(iframe.contentWindow).match(/\[object Window.*\]/),
+                 "COW works properly");
+        } catch(e) {
+          assert(false, "COW fails : "+e.message);
+        }
+        self.port.emit("end");
+      }, true);
+      iframe.setAttribute("src", url);
+      document.body.appendChild(iframe);
+      dump("bar : "+url+"\n");
+    },
+    additionalDomains: [url],
+    contentScriptOptions: {
+      url: url
+    }
+  });
+
+  worker.port.on("end", function () {
+    server.stop(helper.done);
+  });
 
 });
