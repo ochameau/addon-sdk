@@ -8,7 +8,7 @@ const { getPreferedLocales, findClosestLocale } = require("api-utils/l10n/locale
 const { defer } = require("api-utils/promise");
 
 // Get URI for the addon root folder:
-const { rootURI } = require("@packaging");
+const { rootURI } = require("@loader/options");
 
 // Two global objects initialized during `init()` call:
 // A dictionnary which maps keys to translate into translated strings
