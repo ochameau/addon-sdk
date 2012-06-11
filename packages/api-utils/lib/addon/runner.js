@@ -78,18 +78,18 @@ function startup(reason, options) {
   }
   // Load localization manifest and .properties files.
   // Run the addon even in case of error (best effort approach)
-  require("api-utils/l10n/core").
-    init().
-    then(function success() {
-           onLocalizationReady(options);
-         },
-         function (error) {
-           console.warning("Error while loading localization: " + error);
-           onLocalizationReady(options);
-         });
+  require('api-utils/l10n/loader')
+    .load()
+    .then(null,
+          function failure(error) {
+            console.warning("Error while loading localization: " + error);
+          })
+    .then(function onLocalizationReady() {
+      run(options);
+    });
 }
 
-function onLocalizationReady(options) {
+function run(options) {
   try {
     // TODO: When bug 564675 is implemented this will no longer be needed
     // Always set the default prefs, because they disappear on restart

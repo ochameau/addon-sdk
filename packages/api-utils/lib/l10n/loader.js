@@ -10,25 +10,11 @@ const { defer } = require("api-utils/promise");
 // Get URI for the addon root folder:
 const { rootURI } = require("@loader/options");
 
-// Two global objects initialized during `init()` call:
-// A dictionnary which maps keys to translate into translated strings
-let globalHash = {};
-// A string for the selected locale, like "ja-JP-mac"
-let bestMatchingLocale = null;
+// Global variable that will be set during the call to `load` method
+let data = null;
 
-exports.get = function get(k) {
-  return k in globalHash ? globalHash[k] : null;
-}
-
-// Returns the full length locale code: ja-JP-mac, en-US or fr
-exports.locale = function locale() {
-  return bestMatchingLocale;
-}
-// Returns the short locale code: ja, en, fr
-exports.language = function language() {
-  return bestMatchingLocale
-         ? bestMatchingLocale.split("-")[0].toLowerCase()
-         : null;
+exports.data = function getData() {
+  return data;
 }
 
 function readURI(uri) {
@@ -72,37 +58,35 @@ function getAvailableLocales() {
 }
 
 // Returns URI of the best locales file to use from the XPI
-function getBestLocaleFile() {
+function getBestLocale() {
   // Read localization manifest file that contains list of available languages
   return getAvailableLocales().then(function (availableLocales) {
     // Retrieve list of prefered locales to use
     let preferedLocales = getPreferedLocales();
 
     // Compute the most preferable locale to use by using these two lists
-    bestMatchingLocale = findClosestLocale(availableLocales, preferedLocales);
-
-    // It may be null if the addon doesn't have any locale file
-    if (!bestMatchingLocale)
-      return null;
-
-    let localeURI = rootURI + "locale/" + bestMatchingLocale + ".json";
-    return localeURI;
+    return findClosestLocale(availableLocales, preferedLocales);
   });
-
 }
 
-exports.init = function init() {
+exports.load = function load() {
   // First, search for a locale file:
-  return getBestLocaleFile().then(function (localeURI) {
-    if (!localeURI)
+  return getBestLocale().then(function (bestMatchingLocale) {
+    // It may be null if the addon doesn't have any locale file
+    if (!bestMatchingLocale)
       throw Error("Unable to find any usable locale file");
+
+    let localeURI = rootURI + "locale/" + bestMatchingLocale + ".json";
 
     // Locale files only contains one big JSON object that is used as
     // an hashtable of: "key to translate" => "translated key"
     // TODO: We are likely to change this in order to be able to overload
     //       a specific key translation. For a specific package, module or line?
     return readJsonUri(localeURI).then(function (json) {
-      globalHash = json;
+      data = {
+        hash: json,
+        bestMatchingLocale: bestMatchingLocale
+      };
     });
   });
 }

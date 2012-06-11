@@ -26,8 +26,8 @@ function createTest(locale, testFunction) {
     // the right .json file
     setLocale(locale);
     // Initialize main l10n module in order to load new locale files
-    loader.require("api-utils/l10n/core").
-      init().
+    loader.require("api-utils/l10n/loader").
+      load().
       then(function success() {
              // Execute the given test function
              testFunction(test, loader, function onDone() {
