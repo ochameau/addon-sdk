@@ -63,8 +63,7 @@ function startup(reason, options) {
     return wait(reason, options);
 
   // Inject globals ASAP in order to have console API working ASAP
-  let loader = options.loader;
-  Object.defineProperties(loader.globals, descriptor(globals));
+  Object.defineProperties(options.loader.globals, descriptor(globals));
 
   // Try initializing HTML localization before running main module. Just print
   // an exception in case of error, instead of preventing addon to be run.
@@ -79,7 +78,6 @@ function startup(reason, options) {
   }
   // Load localization manifest and .properties files.
   // Run the addon even in case of error (best effort approach)
-  let callback = onLocalizationReady.bind(null, options);
   require("api-utils/l10n/core").
     init().
     then(function success() {
@@ -98,7 +96,7 @@ function onLocalizationReady(options) {
     setDefaultPrefs(options.prefsURI);
 
     // this is where the addon's main.js finally run.
-    let program = main(loader, options.main);
+    let program = main(options.loader, options.main);
 
     if (typeof(program.onUnload) === 'function')
       unload(program.onUnload);

@@ -101,7 +101,7 @@ exports.init = function init() {
     // an hashtable of: "key to translate" => "translated key"
     // TODO: We are likely to change this in order to be able to overload
     //       a specific key translation. For a specific package, module or line?
-    return readJsonUri(localeURI, function (json) {
+    return readJsonUri(localeURI).then(function (json) {
       globalHash = json;
     });
   });
