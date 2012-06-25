@@ -31,6 +31,13 @@ function main() {
                     });
   }
   else if (command === "build-xpi") {
+    console.log("Root Path: " + options.rootPath);
+    console.log("SDK Path: " + options.sdkPath);
+    // - Read FS
+    // ... TODO ...
+    // - Build manifest
+    // ... TODO ...
+    // - Build xpi
     xpi.build(options);
   }
   else if (command == "no-quit") {
