@@ -35,29 +35,43 @@ function runApplication(cmdLine) {
   // Take care that this file (CommandLineHandler.js) is always cached!
   Services.obs.notifyObservers(null, "startupcache-invalidate", null);
   try {
-    let baseURI = "resource://app/";
-    let xpiJarURI = Services.io.newURI("jar:" + baseURI + "cfx.xpi!/",
-                                       null,
-                                       null);
+    // Compute various necessary URIs:
+    let xreUri = Services.io.newURI("resource://app/", null, null);
+    let sdkRoot = xreUri.QueryInterface(Components.interfaces.nsIFileURL).file.parent.parent;
+    let sdkRootURI = Services.io.newFileURI(sdkRoot).spec;
+    let cfxURI = sdkRootURI + "cfx/";
+    let apiutilsURI = sdkRootURI + "packages/api-utils/lib/";
+    let loaderURI = apiutilsURI + "loader.js";
 
-    // Finally evaluate bootstrap.js from the xpi
-    let bootstrap = {};
-    Services.scriptloader.loadSubScript(
-      xpiJarURI.spec + "bootstrap.js",
-      bootstrap);
+    // Loader the module loader
+    let Loader = {};
+    Cu.import(loaderURI, Loader);
 
-    // data object sent to bootstrap's startup method:
-    // An object crafted by AddonManager code, but jetpack only uses
-    // resourceURI attribute
-    let data = {
-      resourceURI: xpiJarURI
-    };
+    // Instanciate one instance
+    let loader = Loader.Loader({
+      main: "./cfx",
+      paths: {
+        './': cfxURI,
+        'api-utils/': apiutilsURI,
+        '': apiutilsURI
+      },
+      resolve: function (id, requirer, base) {
+        if (id == "chrome")
+          return id;
+        if (id[0] == ".")
+          return Loader.resolve(id, requirer);
+        return id;
+      }
+    });
 
-    // load reason code, always use 'enable'
-    let reasonCode = 3;
+    // Inject `console` global
+    let module = Loader.Module('api-utils/loader', loaderURI);
+    let require = Loader.Require(loader, module);
+    loader.globals.console = require('api-utils/globals').console;
 
-    // Fake AddonManager behavior by calling startup method
-    bootstrap.startup(data, reasonCode);
+    // Execute cfx main module
+    Loader.main(loader, "./cfx");
+
   }
   catch(e) {
     let msg = "Exception while running boostrap.js:\n" + e + "\n" + e.stack;
