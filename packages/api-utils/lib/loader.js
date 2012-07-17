@@ -119,9 +119,6 @@ exports.override = override;
 const Sandbox = iced(function Sandbox(options) {
   // Normalize options and rename to match `Cu.Sandbox` expectations.
   options = {
-    // Do not expose `Components` if you really need them (bad idea!) you
-    // still can expose via prototype.
-    wantComponents: false,
     sandboxName: options.name,
     principal: 'principal' in options ? options.principal : systemPrincipal,
     wantXrays: 'wantXrays' in options ? options.wantXrays : true,
