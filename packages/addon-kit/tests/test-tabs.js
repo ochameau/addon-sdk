@@ -5,6 +5,7 @@
 
 var {Cc,Ci} = require("chrome");
 const { Loader } = require("test-harness/loader");
+const timer = require("timer");
 
 // test tab.activeTab getter
 exports.testActiveTab_getter = function(test) {
@@ -25,6 +26,54 @@ exports.testActiveTab_getter = function(test) {
         }
       }
     );
+  });
+};
+
+// Bug 682681 - tab.title should never be empty
+exports.testBug682681_aboutURI = function(test) {
+  test.waitUntilDone();
+
+  openBrowserWindow(function(window, browser) {
+    let tabs = require("tabs");
+
+    tabs.on('ready', function onReady(tab) {
+      tabs.removeListener('ready', onReady);
+
+      test.assertEqual(tab.title, "New Tab", "title of about: tab is not blank");
+
+      // end of test
+      closeBrowserWindow(window, function() test.done());
+    });
+
+    // open a about: url
+    tabs.open({
+      url: "about:blank",
+      inBackground: true
+    });
+  });
+};
+
+// related to Bug 682681
+exports.testTitleForDataURI = function(test) {
+  test.waitUntilDone();
+
+  openBrowserWindow(function(window, browser) {
+    let tabs = require("tabs");
+
+    tabs.on('ready', function onReady(tab) {
+      tabs.removeListener('ready', onReady);
+
+      test.assertEqual(tab.title, "tab", "data: title is not Connecting...");
+
+      // end of test
+      closeBrowserWindow(window, function() test.done());
+    });
+
+    // open a about: url
+    tabs.open({
+      url: "data:text/html;charset=utf-8,<title>tab</title>",
+      inBackground: true
+    });
   });
 };
 
@@ -97,7 +146,7 @@ exports.testAutomaticDestroy = function(test) {
     
     // Fire a tab event an ensure that this destroyed tab is inactive
     tabs.once('open', function () {
-      require("timer").setTimeout(function () {
+      timer.setTimeout(function () {
         test.assert(!called, "Unloaded tab module is destroyed and inactive");
         closeBrowserWindow(window, function() test.done());
       }, 0);
@@ -859,7 +908,7 @@ function openBrowserWindow(callback, url) {
         window.removeEventListener("load", onLoad, true);
         let browsers = window.document.getElementsByTagName("tabbrowser");
         try {
-          require("timer").setTimeout(function () {
+          timer.setTimeout(function () {
             callback(window, browsers[0]);
           }, 10);
         } catch (e) { console.exception(e); }

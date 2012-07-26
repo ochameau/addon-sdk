@@ -6,6 +6,7 @@
 
 let {Cc,Ci} = require("chrome");
 const { Loader } = require('test-harness/loader');
+const timer = require("timer");
 
 // These should match the same constants in the module.
 const ITEM_CLASS = "jetpack-context-menu-item";
@@ -473,7 +474,7 @@ exports.testContentContextArgs = function (test) {
   let item = new loader.cm.Item({
     label: "item",
     contentScript: 'self.on("context", function (node) {' +
-                   '  let Ci = Components.interfaces;' +
+                   '  let Ci = Components["interfaces"];' +
                    '  self.postMessage(node instanceof Ci.nsIDOMHTMLElement);' +
                    '  return false;' +
                    '});',
@@ -885,7 +886,7 @@ exports.testItemClick = function (test) {
     label: "item",
     data: "item data",
     contentScript: 'self.on("click", function (node, data) {' +
-                   '  let Ci = Components.interfaces;' +
+                   '  let Ci = Components["interfaces"];' +
                    '  self.postMessage({' +
                    '    isElt: node instanceof Ci.nsIDOMHTMLElement,' +
                    '    data: data' +
@@ -931,7 +932,7 @@ exports.testMenuClick = function (test) {
   let topMenu = new loader.cm.Menu({
     label: "top menu",
     contentScript: 'self.on("click", function (node, data) {' +
-                   '  let Ci = Components.interfaces;' +
+                   '  let Ci = Components["interfaces"];' +
                    '  self.postMessage({' +
                    '    isAnchor: node instanceof Ci.nsIDOMHTMLAnchorElement,' +
                    '    data: data' +
@@ -1867,7 +1868,7 @@ TestHelper.prototype = {
     const self = this;
     node.addEventListener(event, function handler(evt) {
       node.removeEventListener(event, handler, useCapture);
-      require("timer").setTimeout(function () {
+      timer.setTimeout(function () {
         try {
           callback.call(self, evt);
         }
