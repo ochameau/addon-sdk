@@ -108,9 +108,9 @@ const WorkerSandbox = EventEmitter.compose({
     let window = worker._window;
     let proto = window;
 
-    let principals = window;
+    let principals = [window];
     if (worker.additionalDomains && worker.additionalDomains.length > 0)
-      principals = [window];//.concat(worker.additionalDomains);
+      principals = [window].concat(worker.additionalDomains);
     console.log("principal: " + principals);
 
     // Instantiate trusted code in another Sandbox in order to prevent content

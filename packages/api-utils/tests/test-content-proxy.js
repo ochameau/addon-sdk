@@ -92,7 +92,7 @@ function createWorker(test, xrayWindow, options, done) {
 }
 
 /* Examples for the `createProxyTest` uses */
-/*
+
 let html = "<script>var documentGlobal = true</script>";
 exports.testCreateProxyTest = createProxyTest(html, function (helper, test) {
   // You can get access to regular `test` object in second argument of
@@ -308,7 +308,7 @@ exports.testStringOverload = createProxyTest(html, function (helper, test) {
     }
   );
 });
-
+*/
 
 exports.testMozMatchedSelector = createProxyTest("", function (helper) {
   helper.createWorker(
@@ -854,7 +854,7 @@ exports.testMutationObvserver = createProxyTest(html, function (helper) {
   );
 
 });
-*/
+
 exports.testCrossDomainFeatures = createProxyTest("", function (helper) {
   let serverPort = 8100;
   let server = require("httpd").startServerAsync(serverPort);
