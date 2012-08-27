@@ -828,9 +828,9 @@ function handlerMaker(obj) {
         obj.addEventListener(name.replace(/^on/, ""), val, true);
         return true;
       }
-      
+      dump("----- "+name+"\n");
       obj[name] = val;
-      
+      dump("---/\n");
       // Handle native method not overloaded on XrayWrappers:
       //   obj.addEventListener = val; -> obj.addEventlistener = native method
       // And, XPCNativeWrapper bug where nested values appear to be wrapped:

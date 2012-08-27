@@ -117,11 +117,13 @@ const WorkerSandbox = EventEmitter.compose({
     let principals = [window];
     if (worker.additionalDomains && worker.additionalDomains.length > 0)
       principals = [window].concat(worker.additionalDomains);
-    console.log("principal: " + principals);
+    if (window.toString().match(/Chrome/) || window.location.toString().match(/about:/))
+      principals = window;
+    console.log("principal: " + principals+" -- "+window.location);
 
     // Instantiate trusted code in another Sandbox in order to prevent content
     // script from messing with standard classes used by proxy and API code.
-    let apiSanbox = sandbox(principals, { wantXrays: true });
+    let apiSandbox = Cu.Sandbox(principals, { wantXrays: true });
 
     // Build content proxies only if the document has a non-system principal
     if (XPCNativeWrapper.unwrap(window) !== window) {
@@ -155,7 +157,7 @@ const WorkerSandbox = EventEmitter.compose({
     // Load trusted code that will inject content script API.
     // We need to expose JS objects defined in same principal in order to
     // avoid having any kind of wrapper.
-    load(apiSandbox, CONTENT_WORKER_URL);
+    load(content, CONTENT_WORKER_URL);
 
     // prepare a clean `self.options`
     let options = 'contentScriptOptions' in worker ?
@@ -189,7 +191,7 @@ const WorkerSandbox = EventEmitter.compose({
     };
     let onEvent = this._onContentEvent.bind(this);
     // `ContentWorker` is defined in CONTENT_WORKER_URL file
-    let result = apiSandbox.ContentWorker.inject(content, chromeAPI, onEvent, options);
+    let result = content.ContentWorker.inject(content, chromeAPI, onEvent, options);
     this._emitToContent = result.emitToContent;
     this._hasListenerFor = result.hasListenerFor;
 

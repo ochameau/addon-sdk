@@ -411,18 +411,24 @@ exports.testFormNodeName = createProxyTest("", function (helper) {
 
 });
 
-exports.testLocalStorage = createProxyTest("", function (helper, test) {
+exports.test11LocalStorage = createProxyTest("", function (helper, test) {
 
   let worker = helper.createWorker(
     'new ' + function ContentScriptScope() {
       // Check localStorage:
+      dump("A\n");
       assert(window.localStorage, "has access to localStorage");
+      dump("B\n");
       window.localStorage.name = 1;
+      dump("C\n");
       assert(window.localStorage.name == 1, "localStorage appears to work");
-
+dump("D\n");
       self.port.on("step2", function () {
+      dump("E\n");
         window.localStorage.clear();
+        dump("F\n");
         assert(window.localStorage.name == undefined, "localStorage really, really works");
+        dump("Gs\n");
         done();
       });
       self.port.emit("step1");
