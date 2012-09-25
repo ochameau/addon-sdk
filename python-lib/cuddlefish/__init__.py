@@ -650,11 +650,11 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     # the choice of loader for manifest-generation purposes. In practice,
     # this means that alternative loaders probably won't work with
     # --strip-xpi.
-    assert packaging.DEFAULT_LOADER == "api-utils"
-    assert pkg_cfg.packages["api-utils"].loader == "lib/cuddlefish.js"
-    cuddlefish_js_path = os.path.join(pkg_cfg.packages["api-utils"].root_dir,
-                                      "lib", "cuddlefish.js")
-    loader_modules = [("api-utils", "lib", "cuddlefish", cuddlefish_js_path)]
+    assert packaging.DEFAULT_LOADER == "sdk"
+    assert pkg_cfg.packages["sdk"].loader == "lib/loader/cuddlefish.js"
+    cuddlefish_js_path = os.path.join(pkg_cfg.packages["sdk"].root_dir,
+                                      "loader", "cuddlefish.js")
+    loader_modules = [("sdk", "lib", "loader/cuddlefish", cuddlefish_js_path)]
     scan_tests = command == "test"
     test_filter_re = None
     if scan_tests and options.filter:
