@@ -161,6 +161,14 @@ parser_groups = (
                                 default="firefox",
                                 cmds=['test', 'run', 'testex', 'testpkgs',
                                       'testall'])),
+        (("-m", "--local-modules",), dict(dest="use_local_modules",
+                                     help=("Overload JS modules integrated into"
+                                           " Firefox with the one given in your"
+                                           " SDK repository"),
+                                     action="store_true",
+                                     default=False,
+                                     cmds=['run', 'test', 'testpkgs',
+                                           'testall', 'xpi'])),
         (("", "--no-run",), dict(dest="no_run",
                                      help=("Instead of launching the "
                                            "application, just show the command "
@@ -764,6 +772,11 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
 
     harness_options.update(build)
 
+    # When cfx is run from sdk root directory, we will be using firefox modules
+    # So that integration tools will continue to work and use local modules
+    if os.getcwd() == env_root:
+        options.use_local_modules = True
+
     extra_environment = {}
     if command == "test":
         # This should be contained in the test runner package.
@@ -796,7 +809,9 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     if target_cfg.get('preferences'):
         harness_options['preferences'] = target_cfg.get('preferences')
 
-    harness_options['manifest'] = manifest.get_harness_options_manifest()
+    harness_options['manifest'] = \
+        manifest.get_harness_options_manifest(not options.use_local_modules)
+    harness_options['use-xpi-sdk'] = not options.use_local_modules
     harness_options['allTestModules'] = manifest.get_all_test_modules()
     if len(harness_options['allTestModules']) == 0 and command == "test":
         sys.exit(0)
@@ -870,7 +885,10 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
                              norun=options.no_run,
                              used_files=used_files,
                              enable_mobile=options.enable_mobile,
-                             mobile_app_name=options.mobile_app_name)
+                             mobile_app_name=options.mobile_app_name,
+                             env_root=env_root,
+                             is_running_tests=(command == "test"),
+                             use_local_modules=options.use_local_modules)
         except ValueError, e:
             print ""
             print "A given cfx option has an inappropriate value:"
