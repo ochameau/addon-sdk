@@ -840,7 +840,7 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     # build_manifest earlier
     used_files = None
     if command == "xpi":
-      used_files = set(manifest.get_used_files())
+      used_files = set(manifest.get_used_files(not options.use_local_modules))
 
     if options.no_strip_xpi:
         used_files = None # disables the filter, includes all files
