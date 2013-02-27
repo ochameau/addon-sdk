@@ -1051,3 +1051,28 @@ exports.testEvents = function(test) {
     }
   );
 };
+
+exports.testCustomEvents = function(test) {
+  let content = "<script>\n new " + function DocumentScope() {
+    window.addEventListener("CustomEvent", function () {
+      window.receivedEvent = true;
+    });
+  } + "\n</script>";
+
+  let url = "data:text/html;charset=utf-8," + encodeURIComponent(content);
+  testPageMod(test, url, [{
+      include: "data:*",
+      contentScript: 'new ' + function WorkerScope() {
+        let evt = new CustomEvent("CustomEvent");
+        window.dispatchEvent(evt);
+      }
+    }],
+    function(win, done) {
+      test.assert(
+        win.receivedEvent,
+        "Content script sent an event and document received it"
+      );
+      done();
+    }
+  );
+};
